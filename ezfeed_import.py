@@ -138,6 +138,7 @@ def run_ezfeed_import(
     csv_file: Path,
     ezfeed_username: str,
     ezfeed_path: str = EZFEED_PATH_DEFAULT,
+    ezfeed_password: str = "",
 ) -> None:
     """Open EZFeed, log in, and import *csv_file*.
 
@@ -160,7 +161,7 @@ def run_ezfeed_import(
         time.sleep(5)
 
         # ------------------------------------------------------------------
-        # Login — dropdown combobox (no password required)
+        # Login — dropdown combobox (password optional)
         # ------------------------------------------------------------------
         logger.log("Logging in to EZFeed …")
 
@@ -176,7 +177,15 @@ def run_ezfeed_import(
         pyautogui.press("enter")
         time.sleep(0.5)
 
-        # 4. Click the Login button
+        # 4. If a password is provided, tab to the password field and enter it
+        if ezfeed_password:
+            logger.log("Entering EZFeed password …")
+            pyautogui.press("tab")
+            time.sleep(0.3)
+            paste_text(ezfeed_password)
+            time.sleep(0.5)
+
+        # 5. Click the Login button
         wait_and_click(logger, "assets/ezfeed_login.png", "Login button", timeout=15)
         time.sleep(2)
 

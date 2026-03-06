@@ -49,11 +49,12 @@ DEFAULT_REGION = "California Dairies Inc."
 # ---------------------------------------------------------------------------
 
 
-def _save_credentials(portal_user: str, portal_pass: str, region: str, ezfeed_user: str) -> None:
+def _save_credentials(portal_user: str, portal_pass: str, region: str, ezfeed_user: str, ezfeed_password: str = "") -> None:
     keyring.set_password(KEYRING_SERVICE, "portal_username", portal_user)
     keyring.set_password(KEYRING_SERVICE, "portal_password", portal_pass)
     keyring.set_password(KEYRING_SERVICE, "portal_region", region)
     keyring.set_password(KEYRING_SERVICE, "ezfeed_username", ezfeed_user)
+    keyring.set_password(KEYRING_SERVICE, "ezfeed_password", ezfeed_password)
 
 
 def _load_credentials() -> dict:
@@ -62,6 +63,7 @@ def _load_credentials() -> dict:
         "portal_password": keyring.get_password(KEYRING_SERVICE, "portal_password") or "",
         "portal_region": keyring.get_password(KEYRING_SERVICE, "portal_region") or DEFAULT_REGION,
         "ezfeed_username": keyring.get_password(KEYRING_SERVICE, "ezfeed_username") or "",
+        "ezfeed_password": keyring.get_password(KEYRING_SERVICE, "ezfeed_password") or "",
     }
 
 
@@ -83,7 +85,7 @@ def run_headless() -> None:
         creds["portal_password"],
         creds["portal_region"],
     )
-    run_ezfeed_import(csv_path, creds["ezfeed_username"])
+    run_ezfeed_import(csv_path, creds["ezfeed_username"], ezfeed_password=creds["ezfeed_password"])
     print("=== Headless run complete ===")
 
 
@@ -96,7 +98,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Data Entry Automation")
-        self.geometry("560x480")
+        self.geometry("560x520")
         self.resizable(False, False)
 
         self._build_ui()
@@ -152,11 +154,17 @@ class App(tk.Tk):
             row=0, column=1, sticky="w", **pad
         )
 
+        ttk.Label(ezfeed_frame, text="Password:").grid(row=1, column=0, sticky="w", **pad)
+        self.ezfeed_pass_var = tk.StringVar()
+        ttk.Entry(ezfeed_frame, textvariable=self.ezfeed_pass_var, show="*", width=40).grid(
+            row=1, column=1, sticky="w", **pad
+        )
+
         ttk.Label(
             ezfeed_frame,
-            text="(No password required — security not enabled)",
+            text="(Leave blank if security is not enabled)",
             foreground="gray",
-        ).grid(row=1, column=0, columnspan=2, sticky="w", **pad)
+        ).grid(row=2, column=0, columnspan=2, sticky="w", **pad)
 
         # ---- Schedule frame ----
         sched_frame = ttk.LabelFrame(self, text="Schedule (optional)")
@@ -196,6 +204,7 @@ class App(tk.Tk):
         if creds["portal_region"] in REGIONS:
             self.region_var.set(creds["portal_region"])
         self.ezfeed_user_var.set(creds["ezfeed_username"])
+        self.ezfeed_pass_var.set(creds["ezfeed_password"])
 
     # ------------------------------------------------------------------
     # Button handlers
@@ -206,6 +215,7 @@ class App(tk.Tk):
         portal_pass = self.portal_pass_var.get().strip()
         region = self.region_var.get().strip()
         ezfeed_user = self.ezfeed_user_var.get().strip()
+        ezfeed_pass = self.ezfeed_pass_var.get().strip()
 
         if not portal_user or not portal_pass:
             messagebox.showwarning("Missing credentials", "Please enter your portal username and password.")
@@ -215,22 +225,22 @@ class App(tk.Tk):
             return
 
         # Save credentials for headless/scheduled runs
-        _save_credentials(portal_user, portal_pass, region, ezfeed_user)
+        _save_credentials(portal_user, portal_pass, region, ezfeed_user, ezfeed_pass)
 
         self.run_btn.config(state="disabled")
         threading.Thread(
             target=self._run_automation,
-            args=(portal_user, portal_pass, region, ezfeed_user),
+            args=(portal_user, portal_pass, region, ezfeed_user, ezfeed_pass),
             daemon=True,
         ).start()
 
-    def _run_automation(self, portal_user: str, portal_pass: str, region: str, ezfeed_user: str):
+    def _run_automation(self, portal_user: str, portal_pass: str, region: str, ezfeed_user: str, ezfeed_pass: str):
         try:
             self._set_status("Exporting from portal …")
             csv_path = run_portal_export(portal_user, portal_pass, region)
 
             self._set_status("Importing into EZFeed …")
-            run_ezfeed_import(csv_path, ezfeed_user)
+            run_ezfeed_import(csv_path, ezfeed_user, ezfeed_password=ezfeed_pass)
 
             self._set_status("Done ✓")
             messagebox.showinfo("Success", "Export and import completed successfully.")

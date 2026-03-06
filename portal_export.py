@@ -27,9 +27,14 @@ def dump_debug(driver, label: str = "error") -> None:
     """Save a screenshot and page source for post-mortem debugging."""
     try:
         out_dir = config.get_download_dir()
-        shot = out_dir / f"debug_{label}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        shot = out_dir / f"debug_{label}_{stamp}.png"
         driver.save_screenshot(str(shot))
         print(f"[{ts()}] Debug screenshot saved: {shot}")
+        html_path = out_dir / f"debug_{label}_{stamp}.html"
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(driver.page_source)
+        print(f"[{ts()}] Debug HTML saved: {html_path}")
     except Exception as exc:  # noqa: BLE001
         print(f"[{ts()}] dump_debug failed: {exc}")
 
@@ -181,23 +186,33 @@ def run_portal_export(username: str, password: str, region_name: str) -> Path:
                 "Check that the region name matches exactly."
             )
 
+        # Give the SPA time to start navigating
+        time.sleep(3)
+
         # Wait for redirect to the regional login page
         WebDriverWait(driver, 20).until(
             lambda d: "milkmoovement" in d.current_url and d.current_url != "https://www.milkmoovement.com/regions"
         )
         print(f"[{ts()}] Redirected to: {driver.current_url}")
 
+        # Wait for the SPA to fully render the login form
+        time.sleep(5)
+
         # ------------------------------------------------------------------
         # Step 2 — login
         # ------------------------------------------------------------------
         print(f"[{ts()}] Logging in …")
         user_field = find_first(driver, [
+            (By.CSS_SELECTOR, "input[type='text']"),
+            (By.CSS_SELECTOR, "input[type='email']"),
+            (By.CSS_SELECTOR, "input.MuiInputBase-input"),
+            (By.CSS_SELECTOR, ".MuiOutlinedInput-root input"),
+            (By.XPATH, "//label[contains(text(),'Username') or contains(text(),'Email')]/following::input[1]"),
+            (By.XPATH, "//div[contains(@class,'MuiInputBase-root')]//input"),
             (By.NAME, "username"),
             (By.NAME, "email"),
             (By.ID, "username"),
             (By.ID, "email"),
-            (By.CSS_SELECTOR, "input[type='email']"),
-            (By.CSS_SELECTOR, "input[type='text']"),
         ])
         if not user_field:
             dump_debug(driver, "login_no_user_field")
@@ -206,9 +221,12 @@ def run_portal_export(username: str, password: str, region_name: str) -> Path:
         user_field.send_keys(username)
 
         pass_field = find_first(driver, [
+            (By.CSS_SELECTOR, "input[type='password']"),
+            (By.CSS_SELECTOR, "input.MuiInputBase-input[type='password']"),
+            (By.XPATH, "//label[contains(text(),'Password')]/following::input[1]"),
+            (By.XPATH, "//div[contains(@class,'MuiInputBase-root')]//input[@type='password']"),
             (By.NAME, "password"),
             (By.ID, "password"),
-            (By.CSS_SELECTOR, "input[type='password']"),
         ])
         if not pass_field:
             dump_debug(driver, "login_no_pass_field")
@@ -216,11 +234,21 @@ def run_portal_export(username: str, password: str, region_name: str) -> Path:
         pass_field.clear()
         pass_field.send_keys(password)
         pass_field.send_keys(Keys.RETURN)
+        time.sleep(1)  # Brief pause to let the SPA process the form submission
 
-        # Wait for dashboard / main content
+        # Also try clicking the Log In button as backup
+        click_first(driver, [
+            (By.XPATH, "//button[contains(text(),'Log In') or contains(text(),'Login') or contains(text(),'Sign In')]"),
+            (By.CSS_SELECTOR, "button[type='submit']"),
+            (By.CSS_SELECTOR, "button.MuiButton-root"),
+        ], "Login button")
+
+        # Wait for dashboard / main content (SPA hash routing).
+        # Use 'or' so we stop waiting when EITHER the URL leaves /login
+        # OR dashboard elements appear (both indicate a successful login).
         WebDriverWait(driver, 30).until(
-            lambda d: "login" not in d.current_url.lower() or
-                      len(d.find_elements(By.CSS_SELECTOR, "nav, header, .dashboard")) > 0
+            lambda d: "/login" not in d.current_url.lower() or
+                      len(d.find_elements(By.CSS_SELECTOR, "nav, header, .dashboard, [class*='dashboard'], [class*='Dashboard']")) > 0
         )
         print(f"[{ts()}] Logged in. Current URL: {driver.current_url}")
         time.sleep(2)
