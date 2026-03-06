@@ -1,0 +1,7 @@
+selenium
+pyautogui
+pyperclip
+opencv-python
+keyring
+requests
+webdriver-manager
