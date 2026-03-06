@@ -10,6 +10,31 @@ from typing import List, Optional
 import config
 
 # ---------------------------------------------------------------------------
+# Region → login URL mapping
+# ---------------------------------------------------------------------------
+
+REGION_URLS = {
+    "Bongards Creameries": "https://bongards.milkmoovement.io/#/login",
+    "California Dairies Inc.": "https://cdi.milkmoovement.io/#/login",
+    "Cargill Feed Shop": "https://cargill.milkmoovement.io/#/login",
+    "Dairy Farmers of Newfoundland and Labrador": "https://dfnl.milkmoovement.io/#/login",
+    "Erie Cooperative Association (TCJ)": "https://erie.milkmoovement.io/#/login",
+    "Great Plains Dairymen's Association (TCJ)": "https://greatplains.milkmoovement.io/#/login",
+    "Idaho Milk Products": "https://idahomilk.milkmoovement.io/#/login",
+    "KYTN Cooperative (TCJ)": "https://kytn.milkmoovement.io/#/login",
+    "Legacy Milk": "https://legacy.milkmoovement.io/#/login",
+    "Liberty Milk Producers (TCJ)": "https://liberty.milkmoovement.io/#/login",
+    "Michigan Milk Producers Association": "https://mmpa.milkmoovement.io/#/login",
+    "Minerva Dairy": "https://minerva.milkmoovement.io/#/login",
+    "Nebraska Milk Producers (TCJ)": "https://nebraska.milkmoovement.io/#/login",
+    "Plainview Milk Products": "https://plainview.milkmoovement.io/#/login",
+    "Prairie Farms": "https://prairiefarms.milkmoovement.io/#/login",
+    "United Dairymen of Arizona": "https://uda.milkmoovement.io/#/login",
+    "Upstate Niagara Cooperative Inc.": "https://upstateniagara.milkmoovement.io/#/login",
+    "White Eagle Cooperative (TCJ)": "https://whiteeagle.milkmoovement.io/#/login",
+}
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -159,44 +184,20 @@ def run_portal_export(username: str, password: str, region_name: str) -> Path:
     driver = _build_driver(download_dir)
     try:
         # ------------------------------------------------------------------
-        # Step 1 — region selection
+        # Step 1 — navigate directly to regional login page
         # ------------------------------------------------------------------
-        print(f"[{ts()}] Navigating to regions page …")
-        driver.get("https://www.milkmoovement.com/regions")
-        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-
-        # Find the region link/button by normalised text
-        region_norm = norm(region_name)
-        found = False
-        for tag in ("a", "button"):
-            elements = driver.find_elements(By.TAG_NAME, tag)
-            for el in elements:
-                if norm(el.text) == region_norm:
-                    print(f"[{ts()}] Clicking region: {el.text!r}")
-                    el.click()
-                    found = True
-                    break
-            if found:
-                break
-
-        if not found:
-            dump_debug(driver, "region_not_found")
+        login_url = REGION_URLS.get(region_name)
+        if not login_url:
             raise RuntimeError(
-                f"Region '{region_name}' not found on the regions page. "
-                "Check that the region name matches exactly."
+                f"Unknown region '{region_name}'. "
+                f"Known regions: {', '.join(sorted(REGION_URLS.keys()))}"
             )
-
-        # Give the SPA time to start navigating
-        time.sleep(3)
-
-        # Wait for redirect to the regional login page
-        WebDriverWait(driver, 20).until(
-            lambda d: "milkmoovement" in d.current_url and d.current_url != "https://www.milkmoovement.com/regions"
-        )
-        print(f"[{ts()}] Redirected to: {driver.current_url}")
+        print(f"[{ts()}] Navigating to {login_url} …")
+        driver.get(login_url)
 
         # Wait for the SPA to fully render the login form
         time.sleep(5)
+        print(f"[{ts()}] Page loaded. Current URL: {driver.current_url}")
 
         # ------------------------------------------------------------------
         # Step 2 — login

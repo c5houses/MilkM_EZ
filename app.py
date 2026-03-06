@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 import keyring
+import keyring.errors
 
 import config
 import updater
@@ -57,6 +58,14 @@ def _save_credentials(portal_user: str, portal_pass: str, region: str, ezfeed_us
     keyring.set_password(KEYRING_SERVICE, "ezfeed_password", ezfeed_password)
 
 
+def _clear_credentials() -> None:
+    for key in ("portal_username", "portal_password", "portal_region", "ezfeed_username", "ezfeed_password"):
+        try:
+            keyring.delete_password(KEYRING_SERVICE, key)
+        except keyring.errors.PasswordDeleteError:
+            pass
+
+
 def _load_credentials() -> dict:
     return {
         "portal_username": keyring.get_password(KEYRING_SERVICE, "portal_username") or "",
@@ -98,7 +107,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Data Entry Automation")
-        self.geometry("560x520")
+        self.geometry("560x580")
         self.resizable(False, False)
 
         self._build_ui()
@@ -182,6 +191,16 @@ class App(tk.Tk):
             row=0, column=3, **pad
         )
 
+        # ---- Credentials buttons ----
+        cred_frame = ttk.Frame(self)
+        cred_frame.pack(pady=4)
+        ttk.Button(cred_frame, text="Save Credentials", command=self._on_save_credentials).grid(
+            row=0, column=0, padx=10
+        )
+        ttk.Button(cred_frame, text="Clear Saved Credentials", command=self._on_clear_credentials).grid(
+            row=0, column=1, padx=10
+        )
+
         # ---- Status label ----
         self.status_var = tk.StringVar(value="Ready")
         ttk.Label(self, textvariable=self.status_var, foreground="blue").pack(pady=4)
@@ -205,6 +224,24 @@ class App(tk.Tk):
             self.region_var.set(creds["portal_region"])
         self.ezfeed_user_var.set(creds["ezfeed_username"])
         self.ezfeed_pass_var.set(creds["ezfeed_password"])
+
+    def _on_save_credentials(self):
+        portal_user = self.portal_user_var.get().strip()
+        portal_pass = self.portal_pass_var.get().strip()
+        region = self.region_var.get().strip()
+        ezfeed_user = self.ezfeed_user_var.get().strip()
+        ezfeed_pass = self.ezfeed_pass_var.get().strip()
+        _save_credentials(portal_user, portal_pass, region, ezfeed_user, ezfeed_pass)
+        messagebox.showinfo("Credentials", "Credentials saved successfully.")
+
+    def _on_clear_credentials(self):
+        _clear_credentials()
+        self.portal_user_var.set("")
+        self.portal_pass_var.set("")
+        self.region_var.set(DEFAULT_REGION)
+        self.ezfeed_user_var.set("")
+        self.ezfeed_pass_var.set("")
+        messagebox.showinfo("Credentials", "Saved credentials cleared.")
 
     # ------------------------------------------------------------------
     # Button handlers
