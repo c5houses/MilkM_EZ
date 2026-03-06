@@ -130,6 +130,80 @@ def wait_and_click(
 
 
 # ---------------------------------------------------------------------------
+# Username ComboBox selection
+# ---------------------------------------------------------------------------
+
+
+def _select_username_in_combobox(
+    logger: RunLogger, ezfeed_username: str, ezfeed_path: str
+) -> None:
+    """Select *ezfeed_username* in the EZFeed login ComboBox.
+
+    Primary method: pywinauto Windows accessibility API — enumerates the
+    ComboBox items and selects the matching one directly (no OCR, no position
+    counting, works for any username).
+
+    Fallback (if pywinauto is unavailable or fails to connect): open the
+    dropdown with a click, press Home to go to the top of the list, then
+    press the first character of the username so Windows jumps to the first
+    item starting with that letter, and press Enter to confirm.
+    """
+    try:
+        from pywinauto import Application  # type: ignore  # noqa: PLC0415
+
+        logger.log("Attempting pywinauto ComboBox selection …")
+        app: Optional[Application] = None
+        for attempt in range(10):
+            try:
+                app = Application(backend="win32").connect(path=ezfeed_path)
+                break
+            except Exception as connect_exc:  # noqa: BLE001
+                logger.log(f"  pywinauto connect attempt {attempt + 1}/10 failed: {connect_exc}")
+                time.sleep(1)
+
+        if app is None:
+            raise RuntimeError(
+                "Could not connect to EZFeed via pywinauto after 10 attempts."
+            )
+
+        dlg = app.top_window()
+        combo = dlg.ComboBox
+        combo.select(ezfeed_username)
+        logger.log(f"pywinauto: selected '{ezfeed_username}'.")
+        return
+
+    except Exception as exc:  # noqa: BLE001
+        logger.log(
+            f"pywinauto selection failed ({exc}); "
+            "falling back to arrow-key navigation …"
+        )
+
+    # ------------------------------------------------------------------
+    # Fallback: open the dropdown and navigate with keyboard keys.
+    # Windows ComboBox responds to a single-character keypress by jumping
+    # to the first item that starts with that character.
+    # ------------------------------------------------------------------
+    if not ezfeed_username:
+        raise ValueError("ezfeed_username must not be empty.")
+
+    wait_and_click(logger, "assets/ezloginuser.png", "Username dropdown", timeout=30)
+    time.sleep(0.5)
+
+    # Go to the very top of the list
+    pyautogui.press("home")
+    time.sleep(0.2)
+
+    # Jump to the first item starting with the same letter as the username
+    first_char = ezfeed_username[0].lower()
+    pyautogui.press(first_char)
+    time.sleep(0.3)
+
+    # Confirm selection
+    pyautogui.press("enter")
+    time.sleep(0.5)
+
+
+# ---------------------------------------------------------------------------
 # Elevation-aware launcher
 # ---------------------------------------------------------------------------
 
@@ -207,19 +281,12 @@ def run_ezfeed_import(
         # ------------------------------------------------------------------
         logger.log("Logging in to EZFeed …")
 
-        # 1. Click the username dropdown
-        wait_and_click(logger, "assets/ezloginuser.png", "Username dropdown", timeout=30)
+        # 1. Select the username from the ComboBox
+        logger.log(f"Selecting username '{ezfeed_username}' from dropdown …")
+        _select_username_in_combobox(logger, ezfeed_username, ezfeed_path)
         time.sleep(0.5)
 
-        # 2. Paste username as type-ahead text in the combobox
-        paste_text(ezfeed_username)
-        time.sleep(0.5)
-
-        # 3. Press Enter to select
-        pyautogui.press("enter")
-        time.sleep(0.5)
-
-        # 4. If a password is provided, tab to the password field and enter it
+        # 2. If a password is provided, tab to the password field and enter it
         if ezfeed_password:
             logger.log("Entering EZFeed password …")
             pyautogui.press("tab")
@@ -227,7 +294,7 @@ def run_ezfeed_import(
             paste_text(ezfeed_password)
             time.sleep(0.5)
 
-        # 5. Click the Login button
+        # 3. Click the Login button
         wait_and_click(logger, "assets/ezlogin.png", "Login button", timeout=30)
         time.sleep(2)
 
