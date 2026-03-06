@@ -130,6 +130,48 @@ def wait_and_click(
 
 
 # ---------------------------------------------------------------------------
+# Elevation-aware launcher
+# ---------------------------------------------------------------------------
+
+
+def _launch_ezfeed(path: str, logger: RunLogger) -> None:
+    """Launch EZFeed, handling the case where it requires elevation."""
+    import ctypes
+    import os
+
+    # Strategy 1: Try normal subprocess launch first (works if app doesn't need admin,
+    # or if we're already running as admin)
+    try:
+        subprocess.Popen([path])
+        logger.log("Launched EZFeed via subprocess.")
+        return
+    except OSError as e:
+        if not hasattr(e, 'winerror') or e.winerror != 740:  # 740 = ERROR_ELEVATION_REQUIRED
+            raise
+        logger.log("EZFeed requires elevation, using ShellExecute with 'runas' …")
+
+    # Strategy 2: Use ShellExecuteW with 'runas' verb for elevation
+    # This will show a UAC prompt if the script is not already elevated.
+    # When running from Task Scheduler configured with "Run with highest privileges",
+    # no UAC prompt will appear.
+    ret = ctypes.windll.shell32.ShellExecuteW(
+        None,           # hwnd
+        "runas",        # lpOperation - request elevation
+        path,           # lpFile
+        None,           # lpParameters
+        os.path.dirname(path) or None,  # lpDirectory - working dir
+        1,              # nShowCmd - SW_SHOWNORMAL
+    )
+    # ShellExecuteW returns a value > 32 on success
+    if ret <= 32:
+        raise RuntimeError(
+            f"ShellExecuteW failed to launch EZFeed (return code {ret}). "
+            f"Try running the automation app as Administrator."
+        )
+    logger.log("Launched EZFeed via ShellExecuteW (elevated).")
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -157,7 +199,7 @@ def run_ezfeed_import(
 
         # Launch EZFeed
         logger.log("Launching EZFeed …")
-        subprocess.Popen([ezfeed_path])
+        _launch_ezfeed(ezfeed_path, logger)
         time.sleep(5)
 
         # ------------------------------------------------------------------

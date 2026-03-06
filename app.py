@@ -16,6 +16,45 @@ from portal_export import run_portal_export
 from scheduler import Schedule, create_or_update_daily_task, delete_task
 
 # ---------------------------------------------------------------------------
+# Elevation helper
+# ---------------------------------------------------------------------------
+
+
+def _ensure_elevated():
+    """Re-launch this script as admin if we're not already elevated.
+
+    Only auto-elevates on Windows. On other platforms this is a no-op.
+    """
+    import os
+    import sys
+
+    if os.name != 'nt':
+        return
+
+    import ctypes
+    try:
+        is_admin = bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        is_admin = False
+
+    if is_admin:
+        return  # Already running elevated
+
+    # Re-launch ourselves with elevation
+    import subprocess
+    params = subprocess.list2cmdline(sys.argv)
+    executable = sys.executable
+
+    ret = ctypes.windll.shell32.ShellExecuteW(
+        None, "runas", executable, params, None, 1
+    )
+    if ret > 32:
+        sys.exit(0)  # Successfully re-launched elevated; exit this instance
+    # If elevation was declined/failed, continue without it
+    print("WARNING: Could not elevate to admin. EZFeed launch may fail.")
+
+
+# ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
@@ -320,6 +359,8 @@ class App(tk.Tk):
 
 
 def main():
+    _ensure_elevated()
+
     parser = argparse.ArgumentParser(description="Data Entry Automation")
     parser.add_argument(
         "--run",
