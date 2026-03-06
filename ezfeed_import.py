@@ -208,7 +208,7 @@ def run_ezfeed_import(
         logger.log("Logging in to EZFeed …")
 
         # 1. Click the username dropdown
-        wait_and_click(logger, "assets/ezfeed_username_dropdown.png", "Username dropdown", timeout=30)
+        wait_and_click(logger, "assets/ezloginuser.png", "Username dropdown", timeout=30)
         time.sleep(0.5)
 
         # 2. Paste username as type-ahead text in the combobox
@@ -228,7 +228,7 @@ def run_ezfeed_import(
             time.sleep(0.5)
 
         # 5. Click the Login button
-        wait_and_click(logger, "assets/ezfeed_login.png", "Login button", timeout=30)
+        wait_and_click(logger, "assets/ezlogin.png", "Login button", timeout=30)
         time.sleep(2)
 
         # ------------------------------------------------------------------
@@ -253,7 +253,7 @@ def run_ezfeed_import(
         # ------------------------------------------------------------------
         # Confirm import
         # ------------------------------------------------------------------
-        wait_and_click(logger, "assets/ok.png", "OK button", timeout=30)
+        wait_and_click(logger, "assets/ok_import.png", "OK button", timeout=30)
 
         # Wait for the import to process
         logger.log("Waiting 10 seconds for import to complete …")

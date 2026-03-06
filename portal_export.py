@@ -452,6 +452,9 @@ def run_portal_export(username: str, password: str, region_name: str) -> Path:
         # ------------------------------------------------------------------
         # Step 5 — export CSV
         # ------------------------------------------------------------------
+        print(f"[{ts()}] Scrolling page to find Export button …")
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(0.5)
         print(f"[{ts()}] Opening Export menu …")
         export_button_locators = [
             (By.XPATH, "//button[contains(., 'Export')]"),
