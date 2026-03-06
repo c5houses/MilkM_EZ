@@ -125,7 +125,7 @@ def wait_and_click(
                 return
         except Exception:  # noqa: BLE001
             pass
-        time.sleep(0.5)
+        time.sleep(5)
     raise RuntimeError(f"Image not found on screen within {timeout}s: {desc} ({img})")
 
 
@@ -200,7 +200,7 @@ def run_ezfeed_import(
         # Launch EZFeed
         logger.log("Launching EZFeed …")
         _launch_ezfeed(ezfeed_path, logger)
-        time.sleep(5)
+        time.sleep(15)
 
         # ------------------------------------------------------------------
         # Login — dropdown combobox (password optional)
@@ -228,20 +228,20 @@ def run_ezfeed_import(
             time.sleep(0.5)
 
         # 5. Click the Login button
-        wait_and_click(logger, "assets/ezfeed_login.png", "Login button", timeout=15)
+        wait_and_click(logger, "assets/ezfeed_login.png", "Login button", timeout=30)
         time.sleep(2)
 
         # ------------------------------------------------------------------
         # Navigation: Pens → Milk Weights → Import Milk From Processor
         # ------------------------------------------------------------------
-        wait_and_click(logger, "assets/pens.png", "Pens icon", timeout=20)
-        wait_and_click(logger, "assets/milkweights.png", "Milk Weights tab", timeout=20)
-        wait_and_click(logger, "assets/import.png", "Import Milk From Processor", timeout=20)
+        wait_and_click(logger, "assets/pens.png", "Pens icon", timeout=30)
+        wait_and_click(logger, "assets/milkweights.png", "Milk Weights tab", timeout=30)
+        wait_and_click(logger, "assets/import.png", "Import Milk From Processor", timeout=30)
 
         # ------------------------------------------------------------------
         # Browse to CSV file
         # ------------------------------------------------------------------
-        wait_and_click(logger, "assets/browse.png", "Browse button", timeout=20)
+        wait_and_click(logger, "assets/browse.png", "Browse button", timeout=30)
         time.sleep(1)
 
         # Paste the full CSV path into the file-open dialog and confirm
@@ -253,7 +253,7 @@ def run_ezfeed_import(
         # ------------------------------------------------------------------
         # Confirm import
         # ------------------------------------------------------------------
-        wait_and_click(logger, "assets/ok.png", "OK button", timeout=20)
+        wait_and_click(logger, "assets/ok.png", "OK button", timeout=30)
 
         # Wait for the import to process
         logger.log("Waiting 10 seconds for import to complete …")
