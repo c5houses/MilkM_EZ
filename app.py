@@ -145,8 +145,8 @@ def run_headless() -> None:
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Data Entry Automation")
-        self.geometry("560x580")
+        self.title("MilkM EZ — Data Entry Automation")
+        self.geometry("560x650")
         self.resizable(False, False)
 
         self._build_ui()
@@ -164,6 +164,24 @@ class App(tk.Tk):
 
     def _build_ui(self):
         pad = {"padx": 10, "pady": 4}
+
+        # ---- Header ----
+        tk.Label(
+            self,
+            text="MilkM EZ",
+            font=("Segoe UI", 16, "bold"),
+        ).pack(pady=(12, 0))
+        tk.Label(
+            self,
+            text="Milk Moovement → EZFeed Automation",
+            font=("Segoe UI", 9),
+        ).pack()
+        tk.Label(
+            self,
+            text=f"Version {updater.CURRENT_VERSION}",
+            font=("Segoe UI", 8),
+            foreground="gray",
+        ).pack(pady=(0, 6))
 
         # ---- Milk Moovement Portal frame ----
         portal_frame = ttk.LabelFrame(self, text="Milk Moovement Portal")
@@ -249,7 +267,8 @@ class App(tk.Tk):
         btn_frame.pack(pady=6)
         self.run_btn = ttk.Button(btn_frame, text="Run Now", command=self._on_run_now)
         self.run_btn.grid(row=0, column=0, padx=10)
-        ttk.Button(btn_frame, text="Quit", command=self.destroy).grid(row=0, column=1, padx=10)
+        ttk.Button(btn_frame, text="About", command=self._on_about).grid(row=0, column=1, padx=10)
+        ttk.Button(btn_frame, text="Quit", command=self.destroy).grid(row=0, column=2, padx=10)
 
     # ------------------------------------------------------------------
     # Credential management
@@ -347,6 +366,65 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
     # Utility
     # ------------------------------------------------------------------
+
+    def _on_about(self):
+        """Open a modal About dialog with app info and privacy disclosures."""
+        dialog = tk.Toplevel(self)
+        dialog.title("About MilkM EZ")
+        dialog.resizable(False, False)
+        dialog.grab_set()
+
+        # Center over parent
+        self.update_idletasks()
+        parent_x = self.winfo_x()
+        parent_y = self.winfo_y()
+        w = 520
+        h = 480
+        x = parent_x + (self.winfo_width() - w) // 2
+        y = parent_y + (self.winfo_height() - h) // 2
+        dialog.geometry(f"{w}x{h}+{x}+{y}")
+
+        body_text = (
+            f"MilkM EZ — Data Entry Automation\n"
+            f"Version: {updater.CURRENT_VERSION}\n\n"
+            f"Developed by C5 Houses\n\n"
+            f"PRIVACY & SECURITY NOTICE\n\n"
+            f"• This application does NOT collect, transmit, or share any\n"
+            f"  personal data with third parties.\n\n"
+            f"• All credentials (usernames and passwords) are stored LOCALLY\n"
+            f"  on your computer using Windows Credential Manager (keyring).\n"
+            f"  They never leave your machine.\n\n"
+            f"• No data is sent to any external server other than:\n"
+            f"    - The Milk Moovement portal (to log in and export your data)\n"
+            f"    - The EZFeed local program (on your own computer)\n"
+            f"    - GitHub (only to check for application updates)\n\n"
+            f"• The exported CSV file is stored locally in:\n"
+            f"  %LOCALAPPDATA%\\DataEntryAutomation\\downloads\\\n\n"
+            f"• This is an open-source project. Source code is available at:\n"
+            f"  https://github.com/c5houses/MilkM_EZ\n\n"
+            f"DISCLAIMER\n\n"
+            f"This software is provided \"as is\" without warranty of any kind.\n"
+            f"Use at your own risk. The developer is not responsible for any\n"
+            f"data loss or issues arising from the use of this application."
+        )
+
+        text_widget = tk.Text(
+            dialog,
+            wrap="word",
+            width=60,
+            height=22,
+            relief="flat",
+            padx=14,
+            pady=10,
+            font=("Segoe UI", 9),
+        )
+        text_widget.insert("1.0", body_text)
+        text_widget.config(state="disabled")
+        text_widget.pack(fill="both", expand=True, padx=10, pady=(10, 4))
+
+        ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=(0, 10))
+
+        dialog.wait_window()
 
     def _set_status(self, msg: str):
         """Thread-safe status update."""
